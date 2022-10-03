@@ -1,4 +1,4 @@
-# music_trainer
+# Music Trainer
 
 Train your ears to music and your eyes to quavers.
 
