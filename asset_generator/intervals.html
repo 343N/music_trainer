@@ -1,0 +1,236 @@
+<head>
+
+</head>
+
+<body onload="load()">
+    <script src="abcjs-basic-min.js"></script>
+    <script>
+        var abc = "K:C\nB_B";
+
+        function generateIntervals() {
+            
+            let keys = ["A", "A#", "B", "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#"]
+            
+            let START_NOTE = 36
+            let END_NOTE = 64
+            generators = []
+            for (let k of keys){
+                
+                for (let i = START_NOTE; i < END_NOTE; i++){
+                    let n1 = new Note(i)
+                    for (let j = START_NOTE; j < END_NOTE; j++){
+                        if (i == j) continue;
+                        let n2 = new Note(j)
+                        let interval = n1.distanceTo(n2)
+                        generators.push([`K:${k}\n${n1.getString(k)} ${n2.getString(k)}`, k, interval, n1.num, n2.num, n1.num < n2.num])
+                    }
+                }
+                
+            }
+            
+            return generators;
+        }
+
+
+        const noteToValIndex = {}
+        const valToNoteIndex = {}
+        const valToLetterIndex = {}
+
+        function buildIndex() {
+            let baseScores = [
+                0, 2, 4, 5, 7, 9, 11
+            ]
+            let chars = "CDEFGAB";
+            let IGNORE_FLAT = {
+                "C": true,
+                "F": true,
+                0: true,
+                3: true,
+            }
+            let IGNORE_SHARP = {
+                "E": true,
+                "B": true,
+                2: true,
+                6: true,
+            }
+            // accidentals, 0 = none, 1 = flat, 2 = sharp
+            for (let i = 0; i < 3; i++) {
+                // notes 0 - 6 -> C - B
+                for (let j = 0; j < 7; j++) {
+                    // commas
+                    for (let k = 0; k <= 3; k++) {
+                        // base note 
+                        let score = baseScores[j]
+                        // accidental modifier
+                        if (j in IGNORE_FLAT && i == 1) continue;
+                        if (j in IGNORE_SHARP && i == 2) continue;
+                        if (i > 0)
+                        score += i == 1 ? -1 : 1;
+                        // comma modifier
+                        score -= 12 * k;
+                        let accidentalstr = i == 0 ? "" : i == 1 ? "_" : "^";
+                        let str = accidentalstr + chars[j] + ",".repeat(k);
+                        noteToValIndex[str] = score;
+                    }
+                    // apostrophes
+                    for (let k = 0; k <= 3; k++) {
+                        // base note 
+                        let score = baseScores[j] + 12
+                        // accidental modifier
+                        if (j in IGNORE_FLAT && i == 1) continue;
+                        if (j in IGNORE_SHARP && i == 2) continue;
+                        if (i > 0)
+                            score += i == 1 ? -1 : 1;
+                        // apostrophe modifier
+                        score += 12 * k;
+                        let accidentalstr = i == 0 ? "" : i == 1 ? "_" : "^";
+                        let str = accidentalstr + chars[j].toLowerCase() + "'".repeat(k);
+                        noteToValIndex[str] = score;
+                    }
+                }
+            }
+
+            min = 0;
+            // normalize where the lowest note is 0
+            for (let key in noteToValIndex) {
+                if (noteToValIndex[key] < min)
+                    min = noteToValIndex[key];
+            }
+            for (let key in noteToValIndex) {
+                noteToValIndex[key] -= min;
+                valToNoteIndex[noteToValIndex[key]] = key;
+            }
+        }
+
+        let UNSHARPEN = {
+                "A":["C","F","G"],
+                "B":["A","C","D","F","G"],
+                "C#":["A","B","C","D","E","F","G"],
+                "D":["C","F"],
+                "E":["C","D","E","F"],
+                "F#":["A","C","D","E","F","G"],
+                "G":["F"]
+            },
+
+            UNFLATTEN = {
+                "A#":["B","E"],
+                "D#":["A","B","E"],
+                "F": ["B"],
+                "G#":["A","B","D","E"]
+            }
+
+        class Note {
+
+            
+
+            constructor(num) {
+                if (num == null || num == undefined)
+                    throw "Invalid note number";
+                this.num = num;
+                // console.log(num)
+                if (Object.keys(valToNoteIndex).length == 0) buildIndex();
+                this.notestr = valToNoteIndex[num];
+                this.notechar = this.notestr.replaceAll(/,|'|_|\^/g, "").toUpperCase();
+            }
+
+            isSharp = () => {
+                return this.notestr.includes("^");
+            }
+
+            isFlat = () => {
+                return this.notestr.includes("_");
+            }
+
+            isNatural = () => {
+                return !this.isSharp() && !this.isFlat();
+            }
+
+            getString(key = "C") {
+                if (key in UNSHARPEN &&
+                    UNSHARPEN[key].includes(this.notechar)) {
+                    return this.isSharp() ? 
+                        this.notestr.replaceAll("^", "") : 
+                        "=" + this.notestr 
+                }
+                if (key in UNFLATTEN &&
+                    UNFLATTEN[key].includes(this.notechar)) {
+                    return this.isFlat() ? 
+                        this.notestr.replaceAll("_", "") : 
+                        "=" + this.notestr 
+                }
+                return this.notestr
+
+            }
+
+            distanceTo(other) {
+                return Math.abs(this.num - other.num);
+            }
+
+            getVal() {
+                if (this.val) return val;
+                let base = this.note.toUpperCase();
+                let val = valIndex[base];
+                if (this.note != base) val += 1;
+
+
+                if (this.modifier == "^") val += 1;
+                if (this.modifier == "_") val -= 1;
+                return val;
+            }
+
+
+
+        }
+
+        // modifiers for the major keys
+        function getNoteStringPos(string, key) {
+
+        }
+
+        function occurrences(string, subString, allowOverlapping) {
+
+            string += "";
+            subString += "";
+            if (subString.length <= 0) return (string.length + 1);
+
+            var n = 0,
+                pos = 0,
+                step = allowOverlapping ? 1 : subString.length;
+
+            while (true) {
+                pos = string.indexOf(subString, pos);
+                if (pos >= 0) {
+                    ++n;
+                    pos += step;
+                } else break;
+            }
+            return n;
+        }
+
+
+        function drawIntervals() {
+            let generators = generateIntervals();
+            let svgdiv = document.createElement("div");
+            // document.body.appendChild(h);
+            document.body.appendChild(svgdiv);
+            let i = 0; 
+            let m = generators.length
+            for (let gen of generators) {
+                // if (i > 100) return;
+                if (i++ % Math.round(m/100) == 0)
+                console.log(Math.floor(i/m*100))
+                
+                let d = document.createElement("div");
+                d.dataset.abcstr = gen[0];
+                ABCJS.renderAbc(d, gen[0]);
+                svgdiv.appendChild(d)
+            }
+        }
+
+
+        function load() {
+            // drawIntervalsForKey("D")
+        }
+    </script>
+    <div id="paper"></div>
+</body>
